@@ -1,0 +1,200 @@
+app.component.html
+
+<!-- app.component.html -->
+<h1>Item Management</h1>
+
+<!-- Form to Add New Items -->
+<form (submit)="onSubmit($event)">
+  <label for="name">Name:</label>
+  <input type="text" id="name" [(ngModel)]="newItem.name" name="name" required>
+  
+  <label for="description">Description:</label>
+  <input type="text" id="description" [(ngModel)]="newItem.description" name="description" required>
+  
+  <label for="price">Price:</label>
+  <input type="number" id="price" [(ngModel)]="newItem.price" name="price" required>
+
+  <button type="submit">Add Item</button>
+</form>
+
+<!-- Table to Display Items -->
+<table border="1">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Description</th>
+      <th>Price</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let item of data">
+      <td>{{ item._id }}</td>
+      <td>{{ item.name }}</td>
+      <td>{{ item.description }}</td>
+      <td>{{ item.price }}</td>
+    </tr>
+  </tbody>
+</table>
+
+
+app.component.ts
+
+import { Component, OnInit } from '@angular/core';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [CommonModule,FormsModule,HttpClientModule],
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.scss']
+})
+export class AppComponent implements OnInit {
+  title = 'sample';
+  apiUrl = 'http://localhost:3000/api/items'; // API URL
+  data: any[] = [];
+  newItem = { name: '', description: '', price: 0 }; // To capture form data
+
+  constructor(private http: HttpClient) {}
+
+  ngOnInit(): void {
+    this.fetchData();
+  }
+
+  // Fetch all data
+  fetchData(): void {
+    this.http.get<any[]>(this.apiUrl).subscribe(
+      (response) => {
+        this.data = response;
+        console.log(this.data);
+      },
+      (error) => {
+        console.error('There was an error fetching data:', error);
+      }
+    );
+  }
+
+  // Submit new item
+  onSubmit(event: Event): void {
+    event.preventDefault();
+    this.http.post(this.apiUrl, this.newItem).subscribe(
+      (response) => {
+        console.log('Item added successfully:', response);
+        this.newItem = { name: '', description: '', price: 0 }; // Reset form
+        this.fetchData(); // Refresh the data list
+      },
+      (error) => {
+        console.error('Error adding item:', error);
+      }
+    );
+  }
+}
+
+
+create backend folder:
+
+inside backend model,routes folders:
+
+inside model , itemModel.js 
+
+const mongoose = require('mongoose');
+
+const ItemSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  description: { type: String, required: true },
+  price: { type: Number, required: true }
+});
+
+module.exports = mongoose.model('Item', ItemSchema);
+
+
+
+inside routes , itemRoutes.js
+
+const express = require('express');
+const router = express.Router();
+const Item = require('../model/itemModel');
+
+// Create a new item
+router.post('/', async (req, res) => {
+  try {
+    const newItem = new Item(req.body);
+    const savedItem = await newItem.save();
+    res.status(201).json(savedItem);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Get all items
+router.get('/', async (req, res) => {
+  try {
+    const items = await Item.find();
+    res.status(200).json(items);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;
+
+
+server.js
+
+const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const itemRoutes = require('./routes/itemRoutes');
+
+const app = express();
+const port = 3000;
+
+// Middleware
+app.use(bodyParser.json()); // Parse JSON bodies
+app.use(cors()); // Enable CORS
+
+// Connect to MongoDB
+mongoose.connect('mongodb://localhost:27017/mydatabase', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
+// Use Routes
+app.use('/api/items', itemRoutes);
+
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+
+
+app.module.ts
+
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { FormsModule } from '@angular/forms';  // For using [(ngModel)] in forms
+
+import { AppComponent } from './app.component';
+import { CommonModule } from '@angular/common';
+import { HttpClientModule } from '@angular/common/http';
+  // Import the form service
+
+@NgModule({
+  declarations: [
+    AppComponent,
+    CommonModule// Declare the form component
+  ],
+  imports: [
+    BrowserModule,
+    FormsModule,
+    HttpClientModule  // For template-driven forms (ngModel)
+  ],
+})
+export class AppModule {}
+
+
